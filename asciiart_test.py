@@ -26,8 +26,8 @@ class TestLambdaHandler(unittest.TestCase):
         response = lambda_handler({"queryStringParameters": {"line_height": line_height}})
         for key, val in response.items():
             print(f"{key}: {val}")
-        response_body = json.loads(response["body"])
-        art_lines = response_body["art"].split("\n")
+        response_body = response["body"]
+        art_lines = response_body.split("\n")
         self.assertGreaterEqual(len(art_lines), line_height)
 
 

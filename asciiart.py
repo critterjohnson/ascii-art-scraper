@@ -83,13 +83,13 @@ class Parser(HTMLParser):
         self.a_list = []
         self.pre_list = []
 
-def get_categories() -> List[str]:
+def get_categories(path=rootPath) -> List[str]:
     parser = Parser()
 
     # GET CATEGORIES
     categories = []
 
-    page = requests.get(rootPath, headers=headers)
+    page = requests.get(path, headers=headers)
     parser.feed(page.text)
     a = parser.a_list
     for link in a:
@@ -101,14 +101,14 @@ def get_categories() -> List[str]:
 
     return categories
 
-def get_subcategories(category:str) -> dict:
+def get_subcategories(category:str, path=rootPath) -> dict:
     parser = Parser()
     
     categories = get_categories()
 
     subcategories = {}
 
-    path = linkFormat(rootPath + category)
+    path = linkFormat(path + category)
     page = requests.get(path, headers=headers)
     parser.feed(page.text)
     a = parser.a_list
@@ -131,7 +131,33 @@ def build_link_json():
     with open("links_json.json", "w") as file:
         file.write(json_string)
 
+def build_art_json():
+    parser = Parser()
+
+    final = {}
+    with open("links_json.json", "r") as file:
+        link_json = json.load(file)["categories"]
+    for category, subcategory in link_json.items():
+        final[category] = {}
+        for sub, link in subcategory.items():
+            print(f"category:{category}, sub:{sub}, link:{link}")
+            final[category][sub] = {}
+            page = requests.get(link, headers=headers)
+            parser.feed(page.text)
+            pres = parser.pre_list
+            for pre in pres:
+                final[category][sub] = {
+                    "height": len(pre.split("\n")), 
+                    "art": pre
+                }
+            parser.reset()
+            parser.reset_list()
+    with open("final_art.json", "w") as file:
+        file.write(json.dumps(final))
+
 def get_art(line_height=0):
+    random.seed()
+
     with open("links_json.json", "r") as file:
         link_json = json.load(file)["categories"]
 
@@ -143,6 +169,18 @@ def get_art(line_height=0):
         link = subcategories[list(subcategories.keys())[random.randint(0, len(subcategories.keys()) - 1)]]
     except ValueError:
         link = "https://www.asciiart.eu/animals/fish"
+    
+    if link[:-1] == "@":
+        link = link[:-1]
+        categories = get_categories(link)
+        for category in categories:
+            sub_subcategories = get_subcategories(category, link+"/")
+            try:
+                link = sub_subcategories[list(sub_subcategories.keys())[random.randint(0, len(sub_subcategories.keys()) - 1)]]
+            except ValueError:
+                link = "https://www.asciiart.eu/animals/fish"
+
+
     page = requests.get(link, headers=headers)
     parser.feed(page.text)
     pres = parser.pre_list
@@ -181,7 +219,6 @@ def lambda_handler(event=None, context=None) -> dict:
 
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "art": art
-        })
+        "headers": {"content-type": "text/html"},
+        "body": f"<html><body><pre>{art}<pre></body></html>"
     }
