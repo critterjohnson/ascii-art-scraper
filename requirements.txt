@@ -4,7 +4,7 @@ chardet==3.0.4
 idna==2.8
 isort==4.3.21
 lazy-object-proxy==1.4.1
-lxml==4.6.2
+lxml==4.6.5
 mccabe==0.6.1
 ply==3.11
 pylint==2.3.1
